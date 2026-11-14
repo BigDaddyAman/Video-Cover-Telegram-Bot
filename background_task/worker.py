@@ -7,9 +7,13 @@ from aiogram.exceptions import TelegramAPIError, TelegramRetryAfter
 
 from redis_client.queue import (
     acknowledge_job,
+    claim_stale_jobs,
     get_next_job,
 )
-from utils.telegram import restore_caption_entities
+from utils.telegram import (
+    restore_caption_entities,
+    validate_caption_entities,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -17,7 +21,12 @@ logger = logging.getLogger(__name__)
 
 async def send_video_with_retry(bot: Bot, job: dict):
     entities = restore_caption_entities(
-        job["caption_entities"]
+        job.get("caption_entities")
+    )
+
+    entities = validate_caption_entities(
+        job.get("video_caption"),
+        entities,
     )
 
     while True:
@@ -83,7 +92,15 @@ async def worker(bot: Bot):
 
     while True:
         try:
-            result = await get_next_job()
+            result = await claim_stale_jobs()
+
+            if result:
+                logger.warning(
+                    "Recovered abandoned job %s",
+                    result[0],
+                )
+            else:
+                result = await get_next_job()
 
             if not result:
                 continue

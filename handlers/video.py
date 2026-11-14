@@ -23,7 +23,7 @@ async def handle_video(message: Message):
         "video_file_id": video.file_id,
         "video_caption": message.caption,
         "caption_entities": serialize_caption_entities(message),
-        "has_spoiler": False,
+        "has_spoiler": bool(message.has_media_spoiler),
     }
 
     queue_size = await push_waiting_video(

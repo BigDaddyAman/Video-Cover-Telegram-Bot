@@ -1,3 +1,4 @@
+
 import asyncio
 import logging
 
@@ -36,12 +37,20 @@ async def main():
     logger.info("Starting bot and worker...")
 
     try:
-        await asyncio.gather(
-            dp.start_polling(bot),
-            worker(bot),
-        )
+        async with asyncio.TaskGroup() as tg:
+            tg.create_task(
+                dp.start_polling(bot),
+                name="telegram-polling",
+            )
+
+            tg.create_task(
+                worker(bot),
+                name="redis-worker",
+            )
 
     finally:
+        logger.info("Shutting down...")
+
         await bot.session.close()
         await close_redis()
 
